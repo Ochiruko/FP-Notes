@@ -1,0 +1,63 @@
+NOTE: [ <C-K> x* ] will print the greek equivalent of x, where x is a letter.
+
+Y  := λf.(λx.f(xx))(λx.f(xx))
+F  := λf.λn.if(1;n*f(n-1))(n==0)
+F' := λx.λn.if(1;n*(xx)(n-1))(n==0)
+
+YF = (λf.(λx.f(xx))(λx.f(xx))) F
+   = (λx.F(xx))(λx.F(xx))
+   = (λx.(λf.λn.if(1;n*f(n-1))(n==0))(xx))
+     (λx.(λf.λn.if(1;n*f(n-1))(n==0))(xx))
+   = (λx.λn.if(1;n*(xx)(n-1))(n==0))
+     (λx.λn.if(1;n*(xx)(n-1))(n==0))
+   = F'F'
+   = (λn.if(1;n*((λx.λn.if(1;n*(xx)(n-1))(n==0))(λx.λn.if(1;n*(xx)(n-1))(n==0)))(n-1))(n==0)
+   = (λn.if(1;n*(F'F')(n-1))(n==0)
+   = F[F'F'/f]
+recap:
+YF  = F'F'
+    = F[F'F'/f]
+    = F[YF/f]
+which was the goal. YF can now expand recursively, implementing the fix function without self-reference.
+
+ABSTRACT VERSION 2
+Y F |> (λx.F(x x))(λx.F(x x)) |> F((λx.F(x x))(λx.F(x x))) |> F(F' F') |> F(Y F)
+
+So intuitively, the trick is that the second F' in (F'F') feeds the λx in the first F', hence creating
+(λx.F(F'F')) in which F'F' is trivially equivalent to YF through backtracking.
+CRUCIALLY, if
+    F' := λx.F(xx),
+then F'F' will substitute F' for x. That is to say, x becomes a function, F', not a value.
+
+When using fix to create recursive functions:
+1.  Take a recursive function
+        f = ...f...
+2.  Abstract out the f:
+        f = (λx.(...x...)) f = M f
+3.  Apply the Y-combinator to M:
+        fix M |> M fix M |> M ... M fix M
+4.  This beta reduces to an expression which can be applied.
+
+ABSTRACT VERSION 3:
+
+F  := λf.λn.(...f...n...)
+F' := λx.F(xx)
+
+Y F a = (λf.(λx.f(xx))(λx.f(xx))) (λf.λn.(...f...n...) a
+     |> (λx.(λf.λn.(...f...n...))(xx))(λx.(λf.λn.(...f...n...))(xx)) a
+     |> ((λf.λn.(...f...n...))(F'F')) a
+     |> (λn.(...F'F'...n...)) a
+     |> (...F'F'...a...)
+
+or better yet...
+
+F  := λf.λn.M(f,n)
+F' := λx.F(xx)
+
+Y F a = (λf.(λx.f(xx))(λx.f(xx))) (λf.λn.M(f,n)) a
+     |> (λx.(λf.λn.M(f,n))(xx))(λx.(λf.λn.M(f,n))(xx)) a
+     |> ((λf.λn.M(f,n))(F'F')) a
+     |> (λn.M(F'F',n)) a
+     |> M(F'F',a)
+     |> M(YF,a)
+     |> M(F...*inf*...F,a)
